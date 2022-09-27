@@ -1,16 +1,25 @@
-CC = g++
-CFLAGS = -g
-TARGET = oss
-OBJS = main.o
-.SUFFIXES: .c .o
+CC	= gcc -g3
+CFLAGS  = -g3
+TARGET1 = child
+TARGET2 = oss 
 
-.DEFAULT_GOAL : $(TARGET)
-$(TARGET): $(OBJS)
-	$(CC) -o $@ $(OBJS)
+OBJS1	= child.o
+OBJS2	= parent.o
 
-.cpp.o:
-	$(CC) $(CFLAGS) -c $<
+all:	$(TARGET1) $(TARGET2)
 
-.PHONY: clean
+$(TARGET1):	$(OBJS1)
+	$(CC) -o $(TARGET1) $(OBJS1)
+
+$(TARGET2):	$(OBJS2)
+	$(CC) -o $(TARGET2) $(OBJS2)
+
+child.o:	child.c
+	$(CC) $(CFLAGS) -c child.c 
+
+parent.o:	parent.c
+	$(CC) $(CFLAGS) -c parent.c
+
 clean:
-	/bin/rm -f *.o *.log $(TARGET)
+	/bin/rm -f *.o $(TARGET1) $(TARGET2)
+

@@ -1,10 +1,8 @@
 #include "parent.h"
 
 void terminateSigHandler(int sig) {
-	if(sig == SIGTERM) {
-		printf("SIGTERM signal encountered. Terminating.\n");
+		printf("SIGINT signal encountered. Terminating.\n");
 		exit(0);
-	}	
 
 }
 void timeoutSigHandler(int sig) {
@@ -19,11 +17,20 @@ int main(int argc, char **argv) {
 	int option, totalChildProcesses, childrenRunningAtOneTime, clockIncrement;
 	signal(SIGTERM, terminateSigHandler);
 	signal(SIGUSR1, timeoutSigHandler);
+        int childProcessCounter = 0;
+        char *childNumber; //char arrays to send to child
+        char *clock_Increment; //char arrays to send to child
 
-	//char *tChildProcesses;
-	//char *cRunningAtOneTime;
-	//char *cIncrement;
-        while ((option = getopt(argc, argv, "hn:s:m:")) != -1) {
+   struct sigaction sigIntHandler;
+
+   sigIntHandler.sa_handler = terminateSigHandler;
+   sigemptyset(&sigIntHandler.sa_mask);
+   sigIntHandler.sa_flags = 0;
+
+   sigaction(SIGINT, &sigIntHandler, NULL);
+
+
+	while ((option = getopt(argc, argv, "hn:s:m:")) != -1) {
                 switch (option) {
                         case 'h' :
                                 printf("To run this program please use the following format:\n");
@@ -33,7 +40,6 @@ int main(int argc, char **argv) {
                         case 'n' :
 
 				totalChildProcesses = (atoi(optarg));
-				//tChildProcesses = (char*)malloc(strlen(argv[optind]));
                                 printf("Total number of child processes to be ran is: %i\n", totalChildProcesses);
 				break;
 			case 's' :
@@ -43,12 +49,10 @@ int main(int argc, char **argv) {
 				exit(-1);
 
 				}
-				//cRunningAtOneTime = (char*)malloc(strlen(argv[optind]));
 				printf("Total children that will be running at one time: %i\n", childrenRunningAtOneTime);
 				break;
 			case 'm' :
 				clockIncrement = (atoi(optarg));
-				//cIncrement = (char*)malloc(strlen(argv[optind]));
 				printf("Each child will increment the clock by: %i\n", clockIncrement);
 				break;
                         case '?':
@@ -62,47 +66,33 @@ int main(int argc, char **argv) {
 		}
 
         }
-	int segment_id; 
-	int* shared_memory; 
-	struct shmid_ds shmbuffer; 
-	int segment_size; 
-	const int shared_segment_size = 0x6400; 
 
-	  /* Allocate a shared memory segment.  */ 
-	segment_id = shmget (IPC_PRIVATE, shared_segment_size, IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+	int segment_id = shmget ( SHMKEY, BUFF_SZ, 0777 | IPC_CREAT);
 	if (segment_id == -1) {
 		perror("Error: parent.c : shared memory failed.");
 	}
-	  /* Attach the shared memory segment.  */ 
-	shared_memory = (int*)shmat(segment_id, NULL, 0);
+
+
+	  /* Attach the shared memory segment.  */
+	char* tempPtr = (char *)(shmat(segment_id, 0, 0)); 
+	int* shared_memory = (int*)(shmat(segment_id, 0, 0));
 	if (shared_memory == NULL) {
 		perror("Error: parent.c : shared memory attach failed.");
 	} 
-	//printf ("shared memory attached at address %p\n", shared_memory); 
-
-	  /* Determine the segment's size. */ 
-	//shmctl (segment_id, IPC_STAT, &shmbuffer); 
-	//segment_size = shmbuffer.shm_segsz; 
-	//printf ("segment size: %d\n", segment_size); 
-	
 	
 	  /* Set shared memory segment to 0  */
-	int i = 0;
+	*shared_memory = 0;
 
-	char *seg_id;
-	char *clock_Increment;
 	clock_Increment = malloc(sizeof(clockIncrement));
-	seg_id = malloc(sizeof(segment_id));
-	//printf("the segment_id is: %i\n", segment_id);
-	sprintf(seg_id, "%d", segment_id);
-	//printf("the seg_id is: %s\n", seg_id);
+	childNumber = malloc(sizeof(totalChildProcesses));
+
         sprintf(clock_Increment, "%d", clockIncrement);
 	
-	for (i; i < totalChildProcesses; i++) {
+	for (childProcessCounter; childProcessCounter < totalChildProcesses; childProcessCounter++) {
         	pid_t childPid = fork(); // This is where the child process splits from the parent
-
+		sprintf(childNumber, "%d",(childProcessCounter + 1));
         	if (childPid == 0) {
-                	char* args[] = {"./child", seg_id, clock_Increment, 0};
+                	char* args[] = {"./child", childNumber, clock_Increment, 0};
                 	execvp(args[0], args);
                 	execlp(args[0],args[0],args[1],args[2], args[3]);
                 	fprintf(stderr,"Exec failed, terminating\n");
@@ -112,20 +102,18 @@ int main(int argc, char **argv) {
                 	//wait(0);
 		}
 	}
-                printf("Parent is now ending.\n");
 
-
-
-
-	shared_memory = shared_memory + clockIncrement;
+	*shared_memory = *shared_memory + clockIncrement;
 	  /* Print out the int from shared memory.  */ 
-	printf ("%i\n", shared_memory); 
+	printf ("%d\n", *shared_memory); 
 	
-	shared_memory = shared_memory + clockIncrement;
+	*shared_memory = *shared_memory + clockIncrement;
           /* Print out the int from shared memory.  */
-        printf ("%i\n", shared_memory);
+        printf ("%d\n", *shared_memory);
 	  /* Detach the shared memory segment.  */ 
 	shmdt (shared_memory);
+
+        printf("Parent is now ending.\n");
 
 	return EXIT_SUCCESS; 
 }

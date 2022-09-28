@@ -2,13 +2,16 @@
 
 void terminateSigHandler(int sig) {
 		printf("SIGINT signal encountered. Terminating.\n");
-		exit(0);
-
+		printf("Clock value is: %d\n",*mem_ptr);
+                shmdt(mem_ptr);
+                kill(0, SIGQUIT);
 }
 void timeoutSigHandler(int sig) {
-	if(sig == SIGUSR1) {
-		printf("SIGUSR1 signal ecountered indicating a timeout. Terminating");
-		exit(0);
+	if(sig == SIGALRM) {
+		printf("SIGALRM signal ecountered indicating a timeout. Terminating\n");
+	 	printf("Clock value is: %d\n",*mem_ptr);
+		shmdt(mem_ptr);	
+		kill(0, SIGQUIT);	
 	}
 
 }
@@ -16,7 +19,8 @@ void timeoutSigHandler(int sig) {
 int main(int argc, char **argv) {
 	int option, totalChildProcesses, childrenRunningAtOneTime, clockIncrement;
 	signal(SIGTERM, terminateSigHandler);
-	signal(SIGUSR1, timeoutSigHandler);
+	signal(SIGALRM, timeoutSigHandler);
+	alarm(2);
         int childProcessCounter = 0;
         char *childNumber; //char arrays to send to child
         char *clock_Increment; //char arrays to send to child
@@ -35,6 +39,7 @@ int main(int argc, char **argv) {
                         case 'h' :
                                 printf("To run this program please use the following format:\n");
                                 printf("./oss [-h] [-n] [-s] [-m]\nWhere [-n] [-s] [-m] require arguments.\n");
+				printf("Default process is: [./oss -n 4 -s 2]\n");
                                 return 0;
 
                         case 'n' :
@@ -82,7 +87,8 @@ int main(int argc, char **argv) {
 	
 	  /* Set shared memory segment to 0  */
 	*shared_memory = 0;
-
+	mem_ptr = shared_memory;
+	
 	clock_Increment = malloc(sizeof(clockIncrement));
 	childNumber = malloc(sizeof(totalChildProcesses));
 
@@ -98,22 +104,13 @@ int main(int argc, char **argv) {
                 	fprintf(stderr,"Exec failed, terminating\n");
                 	exit(1);
         	} else {
-                	sleep(1);
-                	//wait(0);
+                	//sleep(1);
+                	wait();
 		}
 	}
 
-	*shared_memory = *shared_memory + clockIncrement;
-	  /* Print out the int from shared memory.  */ 
-	printf ("%d\n", *shared_memory); 
-	
-	*shared_memory = *shared_memory + clockIncrement;
-          /* Print out the int from shared memory.  */
-        printf ("%d\n", *shared_memory);
-	  /* Detach the shared memory segment.  */ 
-	shmdt (shared_memory);
-
-        printf("Parent is now ending.\n");
-
+        printf("Clock value is: %d\nParent is now ending\n",*shared_memory);
+	shmdt(shared_memory);    // Detach from the shared memory segment
+	shmctl( segment_id, IPC_RMID, NULL ); // Free shared memory segment shm_id
 	return EXIT_SUCCESS; 
 }

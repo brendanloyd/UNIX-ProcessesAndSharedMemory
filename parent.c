@@ -47,9 +47,6 @@ int main(int argc, char **argv) {
 
 				totalChildProcesses = (atoi(optarg));
 				if (totalChildProcesses > 18) {
-                                	perror("Error: parent.c : Can't be more than 18 total child processes.");
-                                	exit(-1);
-                                }
                                 //printf("Total number of child processes to be ran is: %i\n", totalChildProcesses);
 				break;
 			case 's' :
@@ -98,24 +95,21 @@ int main(int argc, char **argv) {
 	childNumber = malloc(sizeof(totalChildProcesses));
 
         sprintf(clock_Increment, "%d", clockIncrement);
-	int cpr;
-	for (childProcessCounter = cpr = 0; childProcessCounter < totalChildProcesses; childProcessCounter++) {
+	for (childProcessCounter = 0; childProcessCounter < (totalChildProcesses - childrenRunningAtOneTime); childProcessCounter++) {
+		wait();
+		if(childrenRunningAtOneTime != 0)
+		childrenRunningAtOneTime--;
 		pid_t childPid = fork(); // This is where the child process splits from the parent
 		sprintf(childNumber, "%d",(childProcessCounter + 1));
         	if (childPid == 0) {
                 	char* args[] = {"./child", childNumber, clock_Increment, 0};
-                	execvp(args[0], args);
+                	//execvp(args[0], args);
                 	execlp(args[0],args[0],args[1],args[2], args[3]);
                 	fprintf(stderr,"Exec failed, terminating\n");
                 	exit(1);
-        	} else {
-			//cpr++;
-                	//if(cpr == childrenRunningAtOneTime) {
-			wait(NULL);
-			//	cpr--;
-			//}
-		}
+        	} 
 	}
+	wait();
 
         printf("Clock value is: %d\nParent is now ending\n",*shared_memory);
 	shmdt(shared_memory);    // Detach from the shared memory segment

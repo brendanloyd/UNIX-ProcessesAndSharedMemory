@@ -17,11 +17,12 @@ void timeoutSigHandler(int sig) {
 }
 
 int main(int argc, char **argv) {
-	int option, totalChildProcesses, childrenRunningAtOneTime, clockIncrement;
+	int option, totalChildProcesses, clockIncrement;
+	int childrenRunningAtOneTime;
 	signal(SIGTERM, terminateSigHandler);
 	signal(SIGALRM, timeoutSigHandler);
 	alarm(2);
-        int childProcessCounter = 0;
+        int childProcessCounter;
         char *childNumber; //char arrays to send to child
         char *clock_Increment; //char arrays to send to child
 
@@ -45,7 +46,11 @@ int main(int argc, char **argv) {
                         case 'n' :
 
 				totalChildProcesses = (atoi(optarg));
-                                printf("Total number of child processes to be ran is: %i\n", totalChildProcesses);
+				if (totalChildProcesses > 18) {
+                                	perror("Error: parent.c : Can't be more than 18 total child processes.");
+                                	exit(-1);
+                                }
+                                //printf("Total number of child processes to be ran is: %i\n", totalChildProcesses);
 				break;
 			case 's' :
 				childrenRunningAtOneTime = (atoi(optarg));
@@ -54,11 +59,11 @@ int main(int argc, char **argv) {
 				exit(-1);
 
 				}
-				printf("Total children that will be running at one time: %i\n", childrenRunningAtOneTime);
+				//printf("Total children that will be running at one time: %i\n", childrenRunningAtOneTime);
 				break;
 			case 'm' :
 				clockIncrement = (atoi(optarg));
-				printf("Each child will increment the clock by: %i\n", clockIncrement);
+				//printf("Each child will increment the clock by: %i\n", clockIncrement);
 				break;
                         case '?':
                                 printf("Driver : main : Invalid option.\n");
@@ -93,9 +98,9 @@ int main(int argc, char **argv) {
 	childNumber = malloc(sizeof(totalChildProcesses));
 
         sprintf(clock_Increment, "%d", clockIncrement);
-	
-	for (childProcessCounter; childProcessCounter < totalChildProcesses; childProcessCounter++) {
-        	pid_t childPid = fork(); // This is where the child process splits from the parent
+	int cpr;
+	for (childProcessCounter = cpr = 0; childProcessCounter < totalChildProcesses; childProcessCounter++) {
+		pid_t childPid = fork(); // This is where the child process splits from the parent
 		sprintf(childNumber, "%d",(childProcessCounter + 1));
         	if (childPid == 0) {
                 	char* args[] = {"./child", childNumber, clock_Increment, 0};
@@ -104,8 +109,11 @@ int main(int argc, char **argv) {
                 	fprintf(stderr,"Exec failed, terminating\n");
                 	exit(1);
         	} else {
-                	//sleep(1);
-                	wait();
+			//cpr++;
+                	//if(cpr == childrenRunningAtOneTime) {
+			wait(NULL);
+			//	cpr--;
+			//}
 		}
 	}
 
